@@ -21,7 +21,7 @@ internal sealed partial class RepoBrowserWindow
 
         var scale = ImGuiHelpers.GlobalScale;
 
-        var barHeight = 52f * scale; // Slightly taller
+        var barHeight = 86f * scale;
 
         var padding = 12f * scale;
 
@@ -122,7 +122,29 @@ internal sealed partial class RepoBrowserWindow
                     ImGui.SetTooltip("Disable enabled repositories that Dalamud reports as download failed.");
                 }
 
+                ImGui.NewLine();
 
+                if (ImGui.Button(checkingDisabledRepos ? "Checking..." : "Check disabled", new Vector2(120f * scale, inputHeight)))
+                {
+                    CheckDisabledRepos();
+                }
+
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Probe disabled repositories and enable the ones that are available again.");
+                }
+
+                ImGui.SameLine();
+
+                if (ImGui.Button("Sort repos", new Vector2(90f * scale, inputHeight)))
+                {
+                    SortConfiguredRepos();
+                }
+
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Sort configured repositories: active first, then inactive, alphabetically in each group.");
+                }
 
                 var statusText = $"{filteredCount} repositories shown";
 

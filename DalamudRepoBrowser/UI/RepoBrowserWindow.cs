@@ -29,6 +29,7 @@ internal sealed partial class RepoBrowserWindow : Window, IDisposable
     private uint filteredCount;
     private DateTimeOffset uiOpenedAt;
     private bool enabledReposInitialized;
+    private bool checkingDisabledRepos;
     private IReadOnlyList<RepoInfo>? enabledReposSource;
     private DateTimeOffset lastEnabledRefresh = DateTimeOffset.MinValue;
     private const int EnabledRefreshIntervalMs = 1500;

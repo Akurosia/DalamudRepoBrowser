@@ -82,6 +82,41 @@ internal sealed class RepoManager : IDisposable
 
     public int DisableFailedRepos() => repoSettingsAccessor.DisableFailedRepos();
 
+    public bool SortConfiguredRepos() => repoSettingsAccessor.SortReposByStateAndUrl();
+
+    public async Task<int> EnableAvailableDisabledReposAsync()
+    {
+        var disabledUrls = repoSettingsAccessor.GetDisabledRepoUrls();
+        if (disabledUrls.Count == 0)
+        {
+            return 0;
+        }
+
+        var availableUrls = new List<string>();
+        using var semaphore = new SemaphoreSlim(8);
+        var tasks = disabledUrls.Select(async url =>
+        {
+            await semaphore.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                if (await IsRepoAvailableAsync(url).ConfigureAwait(false))
+                {
+                    lock (availableUrls)
+                    {
+                        availableUrls.Add(url);
+                    }
+                }
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+        return repoSettingsAccessor.SetReposEnabled(availableUrls, true);
+    }
+
     private string GetConfiguredRepoUrl(RepoInfo repo)
     {
         if (!string.IsNullOrEmpty(repo.RawUrl) && repoSettingsAccessor.HasRepo(repo.RawUrl))
@@ -90,6 +125,25 @@ internal sealed class RepoManager : IDisposable
         }
 
         return repo.Url;
+    }
+
+    private async Task<bool> IsRepoAvailableAsync(string url)
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            using var response = await httpClient.SendAsync(
+                request,
+                HttpCompletionOption.ResponseHeadersRead,
+                cts.Token).ConfigureAwait(false);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            log.Debug(ex, $"Disabled repository is still unavailable: {url}");
+            return false;
+        }
     }
 
     public bool TryConsumeSortCountdown()

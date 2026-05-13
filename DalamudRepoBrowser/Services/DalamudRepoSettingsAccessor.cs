@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -172,6 +173,82 @@ internal sealed class DalamudRepoSettingsAccessor
         }
 
         return changed;
+    }
+
+    public List<string> GetDisabledRepoUrls()
+    {
+        var urls = new List<string>();
+
+        try
+        {
+            var repoSettings = GetRepoSettingsList();
+            if (repoSettings == null)
+            {
+                return urls;
+            }
+
+            foreach (var obj in repoSettings)
+            {
+                var settings = new RepoSettings(obj);
+                if (!settings.IsEnabled && !string.IsNullOrWhiteSpace(settings.Url))
+                {
+                    urls.Add(settings.Url);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex, "Failed reading disabled repositories.");
+        }
+
+        return urls;
+    }
+
+    public bool SortReposByStateAndUrl()
+    {
+        try
+        {
+            var repoSettings = GetRepoSettingsList();
+            if (repoSettings == null)
+            {
+                return false;
+            }
+
+            var objects = repoSettings.Cast<object>().ToList();
+            var sorted = objects
+                .Select(obj => new { Object = obj, Settings = new RepoSettings(obj) })
+                .OrderByDescending(entry => entry.Settings.IsEnabled)
+                .ThenBy(entry => entry.Settings.Url, StringComparer.OrdinalIgnoreCase)
+                .Select(entry => entry.Object)
+                .ToList();
+
+            if (objects.SequenceEqual(sorted))
+            {
+                return false;
+            }
+
+            var listType = repoSettings.GetType();
+            var clear = listType.GetMethod("Clear", BindingFlags.Instance | BindingFlags.Public);
+            var add = listType.GetMethod("Add", BindingFlags.Instance | BindingFlags.Public);
+            if (clear == null || add == null)
+            {
+                return false;
+            }
+
+            clear.Invoke(repoSettings, null);
+            foreach (var obj in sorted)
+            {
+                add.Invoke(repoSettings, new[] { obj });
+            }
+
+            SaveAndReload();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex, "Failed sorting repositories.");
+            return false;
+        }
     }
 
     private RepoSettings? GetRepoSettings(string url)

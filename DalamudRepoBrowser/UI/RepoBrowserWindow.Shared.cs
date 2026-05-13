@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Threading.Tasks;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
 using Dalamud.Interface.Components;
@@ -138,6 +139,60 @@ internal sealed partial class RepoBrowserWindow
                 : $"Disabled {changed} repositories marked failed by Dalamud.",
             Title = "Repository Browser",
             Type = changed == 0 ? NotificationType.Info : NotificationType.Success
+        });
+    }
+
+    private void CheckDisabledRepos()
+    {
+        if (checkingDisabledRepos)
+        {
+            return;
+        }
+
+        checkingDisabledRepos = true;
+        Plugin.NotificationManager.AddNotification(new Notification
+        {
+            Content = "Checking disabled repositories...",
+            Title = "Repository Browser",
+            Type = NotificationType.Info
+        });
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var changed = await repoManager.EnableAvailableDisabledReposAsync().ConfigureAwait(false);
+
+                Plugin.NotificationManager.AddNotification(new Notification
+                {
+                    Content = changed == 0
+                        ? "No disabled repositories are available again."
+                        : $"Enabled {changed} disabled repositories that are available again.",
+                    Title = "Repository Browser",
+                    Type = changed == 0 ? NotificationType.Info : NotificationType.Success
+                });
+            }
+            finally
+            {
+                checkingDisabledRepos = false;
+            }
+        });
+    }
+
+    private void SortConfiguredRepos()
+    {
+        var changed = repoManager.SortConfiguredRepos();
+        enabledReposInitialized = false;
+        enabledReposSource = null;
+        enabledRepos.Clear();
+
+        Plugin.NotificationManager.AddNotification(new Notification
+        {
+            Content = changed
+                ? "Sorted repositories by active state, then URL."
+                : "Repositories were already sorted.",
+            Title = "Repository Browser",
+            Type = changed ? NotificationType.Success : NotificationType.Info
         });
     }
 

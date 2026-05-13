@@ -153,6 +153,30 @@ internal sealed partial class RepoBrowserWindow
             ImGui.SetTooltip("Disable enabled repositories that Dalamud reports as download failed.");
         }
 
+        ImGui.SameLine();
+
+        if (ImGui.Button(checkingDisabledRepos ? "Checking disabled..." : "Check disabled repos"))
+        {
+            CheckDisabledRepos();
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Probe disabled repositories and enable the ones that are available again.");
+        }
+
+        ImGui.SameLine();
+
+        if (ImGui.Button("Sort repo entries"))
+        {
+            SortConfiguredRepos();
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Sort configured repositories: active first, then inactive, alphabetically in each group.");
+        }
+
 
 
         if (openSettings)
