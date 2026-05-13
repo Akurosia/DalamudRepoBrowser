@@ -57,6 +57,90 @@ internal sealed partial class RepoBrowserWindow
         return !config.HideClosedSourcePlugins || !plugin.IsClosedSource;
     }
 
+    private List<RepoInfo> GetVisibleRepos(IReadOnlyList<RepoInfo> repos)
+    {
+        var visibleRepos = new List<RepoInfo>();
+        foreach (var repo in repos)
+        {
+            if (config.MaxPlugins < 50 && config.MaxPlugins < repo.Plugins.Count)
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrEmpty(searchText) && !searchResults.Contains(repo))
+            {
+                continue;
+            }
+
+            var enabled = enabledReposInitialized
+                ? enabledRepos.Contains(repo)
+                : repoManager.GetRepoEnabled(repo.Url) || repoManager.GetRepoEnabled(repo.RawUrl);
+            if (enabled && config.HideEnabledRepos)
+            {
+                continue;
+            }
+
+            if (!repo.Plugins.Any(plugin => (config.ShowOutdatedPlugins || IsPluginCurrentOrUnknown(plugin))
+                                           && PluginPassesLanguageFilter(plugin)
+                                           && PluginPassesClosedSourceFilter(plugin)))
+            {
+                continue;
+            }
+
+            visibleRepos.Add(repo);
+        }
+
+        return visibleRepos;
+    }
+
+    private void SetVisibleReposEnabled(IReadOnlyList<RepoInfo> repos, bool enabled)
+    {
+        var visibleRepos = GetVisibleRepos(repos);
+        var changed = repoManager.SetReposEnabled(visibleRepos, enabled);
+
+        foreach (var repo in visibleRepos)
+        {
+            if (enabled)
+            {
+                enabledRepos.Add(repo);
+            }
+            else
+            {
+                enabledRepos.Remove(repo);
+            }
+        }
+
+        enabledReposInitialized = true;
+        enabledReposSource = repos;
+        lastEnabledRefresh = DateTimeOffset.Now;
+
+        Plugin.NotificationManager.AddNotification(new Notification
+        {
+            Content = changed == 0
+                ? "No visible repositories needed changes."
+                : $"{(enabled ? "Enabled" : "Disabled")} {changed} visible repositories.",
+            Title = "Repository Browser",
+            Type = changed == 0 ? NotificationType.Info : NotificationType.Success
+        });
+    }
+
+    private void DisableFailedRepos()
+    {
+        var changed = repoManager.DisableFailedRepos();
+        enabledReposInitialized = false;
+        enabledReposSource = null;
+        enabledRepos.Clear();
+
+        Plugin.NotificationManager.AddNotification(new Notification
+        {
+            Content = changed == 0
+                ? "Dalamud has no enabled failed repositories to disable."
+                : $"Disabled {changed} repositories marked failed by Dalamud.",
+            Title = "Repository Browser",
+            Type = changed == 0 ? NotificationType.Info : NotificationType.Success
+        });
+    }
+
     private string GetRemoteUpdateStatusText()
     {
         if (config.LastRemoteRepoListUpdatedUtc <= 0)

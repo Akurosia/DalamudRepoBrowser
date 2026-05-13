@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
@@ -49,12 +50,128 @@ internal sealed class DalamudRepoSettingsAccessor
                 return;
             }
 
-            AddRepo(url);
+            if (AddRepo(url))
+            {
+                SaveAndReload();
+            }
         }
         catch (Exception ex)
         {
             log.Error(ex, "Failed toggling repository.");
         }
+    }
+
+    public int SetReposEnabled(IEnumerable<string> urls, bool enabled)
+    {
+        var changed = 0;
+
+        try
+        {
+            foreach (var url in urls)
+            {
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    continue;
+                }
+
+                var repo = GetRepoSettings(url);
+                if (repo != null)
+                {
+                    if (repo.IsEnabled == enabled)
+                    {
+                        continue;
+                    }
+
+                    repo.IsEnabled = enabled;
+                    changed++;
+                    continue;
+                }
+
+                if (enabled && AddRepo(url))
+                {
+                    changed++;
+                }
+            }
+
+            if (changed > 0)
+            {
+                SaveAndReload();
+            }
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex, "Failed updating repositories.");
+        }
+
+        return changed;
+    }
+
+    public int DisableFailedRepos()
+    {
+        var changed = 0;
+
+        try
+        {
+            if (!EnsureInitialized())
+            {
+                return 0;
+            }
+
+            var reposProperty = dalamudPluginManager?.GetType()
+                .GetProperty("Repos", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (reposProperty?.GetValue(dalamudPluginManager) is not IEnumerable repos)
+            {
+                return 0;
+            }
+
+            foreach (var obj in repos)
+            {
+                var type = obj.GetType();
+                var state = type.GetProperty("State", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?.GetValue(obj)
+                    ?.ToString();
+                if (!string.Equals(state, "Fail", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var isThirdParty = (bool?)type.GetProperty("IsThirdParty", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?.GetValue(obj) ?? false;
+                var isEnabled = (bool?)type.GetProperty("IsEnabled", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?.GetValue(obj) ?? false;
+                if (!isThirdParty || !isEnabled)
+                {
+                    continue;
+                }
+
+                var url = (string?)type.GetProperty("PluginMasterUrl", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    ?.GetValue(obj);
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    continue;
+                }
+
+                var settings = GetRepoSettings(url);
+                if (settings is not { IsEnabled: true })
+                {
+                    continue;
+                }
+
+                settings.IsEnabled = false;
+                changed++;
+            }
+
+            if (changed > 0)
+            {
+                SaveAndReload();
+            }
+        }
+        catch (Exception ex)
+        {
+            log.Error(ex, "Failed disabling failed repositories.");
+        }
+
+        return changed;
     }
 
     private RepoSettings? GetRepoSettings(string url)
@@ -87,29 +204,29 @@ internal sealed class DalamudRepoSettingsAccessor
         return (IEnumerable?)dalamudRepoSettingsProperty?.GetValue(dalamudConfig);
     }
 
-    private void AddRepo(string url)
+    private bool AddRepo(string url)
     {
         if (!EnsureInitialized())
         {
-            return;
+            return false;
         }
 
         var repoSettings = GetRepoSettingsList();
         if (repoSettings == null)
         {
-            return;
+            return false;
         }
 
         var add = repoSettings.GetType().GetMethod("Add", BindingFlags.Instance | BindingFlags.Public);
         if (add == null || thirdPartyRepoSettingsType == null)
         {
-            return;
+            return false;
         }
 
         var obj = Activator.CreateInstance(thirdPartyRepoSettingsType);
         if (obj == null)
         {
-            return;
+            return false;
         }
 
         _ = new RepoSettings(obj)
@@ -119,7 +236,7 @@ internal sealed class DalamudRepoSettingsAccessor
         };
 
         add.Invoke(repoSettings, new[] { obj });
-        SaveAndReload();
+        return true;
     }
 
     private bool EnsureInitialized()

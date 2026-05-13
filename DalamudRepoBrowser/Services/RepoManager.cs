@@ -74,6 +74,24 @@ internal sealed class RepoManager : IDisposable
 
     public void ToggleRepo(string url) => repoSettingsAccessor.ToggleRepo(url);
 
+    public int SetReposEnabled(IEnumerable<RepoInfo> repos, bool enabled)
+    {
+        var urls = repos.Select(GetConfiguredRepoUrl).Distinct(StringComparer.Ordinal).ToList();
+        return repoSettingsAccessor.SetReposEnabled(urls, enabled);
+    }
+
+    public int DisableFailedRepos() => repoSettingsAccessor.DisableFailedRepos();
+
+    private string GetConfiguredRepoUrl(RepoInfo repo)
+    {
+        if (!string.IsNullOrEmpty(repo.RawUrl) && repoSettingsAccessor.HasRepo(repo.RawUrl))
+        {
+            return repo.RawUrl;
+        }
+
+        return repo.Url;
+    }
+
     public bool TryConsumeSortCountdown()
     {
         if (Volatile.Read(ref sortCountdown) <= 0)

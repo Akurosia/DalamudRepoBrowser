@@ -119,6 +119,40 @@ internal sealed partial class RepoBrowserWindow
 
         }
 
+        if (ImGui.Button("Add visible repos"))
+        {
+            SetVisibleReposEnabled(repos, true);
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Add or enable every currently visible repository with one reload.");
+        }
+
+        ImGui.SameLine();
+
+        if (ImGui.Button("Disable visible repos"))
+        {
+            SetVisibleReposEnabled(repos, false);
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Disable every currently visible repository with one reload.");
+        }
+
+        ImGui.SameLine();
+
+        if (ImGui.Button("Disable failed repos"))
+        {
+            DisableFailedRepos();
+        }
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Disable enabled repositories that Dalamud reports as download failed.");
+        }
+
 
 
         if (openSettings)

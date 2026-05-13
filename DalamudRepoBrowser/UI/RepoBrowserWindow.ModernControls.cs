@@ -49,7 +49,7 @@ internal sealed partial class RepoBrowserWindow
 
 
 
-                var inputWidth = ImGui.GetContentRegionAvail().X * 0.7f;
+                var inputWidth = MathF.Max(150f * scale, ImGui.GetContentRegionAvail().X - (550f * scale));
 
 
 
@@ -84,6 +84,42 @@ internal sealed partial class RepoBrowserWindow
 
                     inputHeight = ImGui.GetFrameHeight();
 
+                }
+
+                ImGui.SameLine();
+
+                if (ImGui.Button("Add visible", new Vector2(100f * scale, inputHeight)))
+                {
+                    SetVisibleReposEnabled(repos, true);
+                }
+
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Add or enable every currently visible repository with one reload.");
+                }
+
+                ImGui.SameLine();
+
+                if (ImGui.Button("Disable visible", new Vector2(120f * scale, inputHeight)))
+                {
+                    SetVisibleReposEnabled(repos, false);
+                }
+
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Disable every currently visible repository with one reload.");
+                }
+
+                ImGui.SameLine();
+
+                if (ImGui.Button("Disable failed", new Vector2(120f * scale, inputHeight)))
+                {
+                    DisableFailedRepos();
+                }
+
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Disable enabled repositories that Dalamud reports as download failed.");
                 }
 
 
