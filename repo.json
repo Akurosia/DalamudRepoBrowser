@@ -17,12 +17,12 @@
     "ImageUrls": [
       ""
     ],
-    "DownloadLinkInstall": "https://github.com/BeSlightly/DalamudRepoBrowser/releases/download/v3.0.0.4/latest.zip",
+    "DownloadLinkInstall": "https://github.com/Akurosia/DalamudRepoBrowser/releases/download/v3.0.0.4/latest.zip",
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadLinkTesting": "https://github.com/BeSlightly/DalamudRepoBrowser/releases/download/v3.0.0.3/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/BeSlightly/DalamudRepoBrowser/releases/download/v3.0.0.4/latest.zip",
-    "DownloadCount": 246,
-    "LastUpdate": 1777494730
+    "DownloadLinkUpdate": "https://github.com/Akurosia/DalamudRepoBrowser/releases/download/v3.0.0.4/latest.zip",
+    "DownloadCount": 0,
+    "LastUpdate": 1778749358
   }
 ]
